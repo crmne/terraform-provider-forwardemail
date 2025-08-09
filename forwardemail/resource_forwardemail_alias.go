@@ -2,6 +2,8 @@ package forwardemail
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/forwardemail/forwardemail-api-go/forwardemail"
 	"github.com/google/go-cmp/cmp"
@@ -12,6 +14,9 @@ import (
 func resourceAlias() *schema.Resource {
 	return &schema.Resource{
 		Description: "A resource to create Forward Email domain aliases.",
+		Importer: &schema.ResourceImporter{
+			StateContext: importAliasState,
+		},
 		Schema: map[string]*schema.Schema{
 			"domain": {
 				Type:        schema.TypeString,
@@ -119,6 +124,7 @@ func resourceAliasRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	for k, v := range map[string]interface{}{
+		"name":                   name,
 		"domain":                 alias.Domain.Name,
 		"recipient_verification": alias.HasRecipientVerification,
 		"enabled":                alias.IsEnabled,
@@ -200,4 +206,27 @@ func toChanges(p, c interface{}) []interface{} {
 	}
 
 	return nil
+}
+
+// importAliasState imports an alias using the format "domain/alias_name"
+func importAliasState(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+	parts := strings.Split(d.Id(), "/")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid import ID format. Expected: domain/alias_name")
+	}
+
+	domain := parts[0]
+	name := parts[1]
+
+	d.Set("domain", domain)
+	d.Set("name", name)
+	d.SetId(name)
+
+	// Call read to populate the rest of the fields
+	diags := resourceAliasRead(ctx, d, meta)
+	if diags.HasError() {
+		return nil, fmt.Errorf("failed to read alias: %v", diags[0].Summary)
+	}
+
+	return []*schema.ResourceData{d}, nil
 }

@@ -12,6 +12,9 @@ import (
 func resourceDomain() *schema.Resource {
 	return &schema.Resource{
 		Description: "A resource to create Forward Email domains.",
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:        schema.TypeString,
@@ -108,6 +111,7 @@ func resourceDomainRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	for k, v := range map[string]interface{}{
+		"name":                      name,
 		"adult_content_protection": domain.HasAdultContentProtection,
 		"phishing_protection":      domain.HasPhishingProtection,
 		"executable_protection":    domain.HasExecutableProtection,
