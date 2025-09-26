@@ -37,7 +37,7 @@ func dataSourceAccount() *schema.Resource {
 	}
 }
 
-func dataSourceAccountRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func dataSourceAccountRead(ctx context.Context, d *schema.ResourceData, meta any) diag.Diagnostics {
 	client, ok := meta.(*forwardemail.Client)
 	if !ok {
 		return diag.Errorf("failed to get forwardemail client")
@@ -48,7 +48,7 @@ func dataSourceAccountRead(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.FromErr(err)
 	}
 
-	for k, v := range map[string]interface{}{
+	for k, v := range map[string]any{
 		"plan":         account.Plan,
 		"email":        account.Email,
 		"full_email":   account.FullEmail,

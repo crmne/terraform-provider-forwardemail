@@ -1,3 +1,4 @@
+// Package forwardemail is a terraform provider for Forward Email
 package forwardemail
 
 import (
@@ -30,7 +31,7 @@ func Provider() *schema.Provider {
 	}
 }
 
-func providerConfigure(c context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+func providerConfigure(c context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 	client := forwardemail.NewClient(forwardemail.ClientOptions{
 		ApiKey: d.Get("api_key").(string),
 	})

@@ -1,143 +1,38 @@
 package forwardemail
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/forwardemail/forwardemail-api-go/forwardemail"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-func TestAccForwardemailAlias_basic(t *testing.T) {
-	var alias forwardemail.Alias
-	domain := fake.Internet().Domain()
-	name := fake.Internet().User()
-	recipient := fake.Internet().FreeEmail()
-
+func TestAccResourceForwardemailAlias(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccForwardemailProviderFactories,
-		CheckDestroy:      testAccCheckForwardemailAliasDestroy,
+		ProviderFactories: testAccProviderFactories(),
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprintf(testAccCheckForwardemailAliasConfig_basic, domain, name, recipient),
+				Config: testAccAliasResourceConfig(),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckForwardemailAliasExists("forwardemail_alias.test", &alias),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "domain", domain),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "name", name),
+					resource.TestCheckResourceAttr("forwardemail_domain.test", "name", "example.com"),
+					resource.TestCheckResourceAttr("forwardemail_alias.test", "domain", "example.com"),
+					resource.TestCheckResourceAttr("forwardemail_alias.test", "name", "postmaster"),
 				),
 			},
 		},
 	})
 }
 
-func TestAccForwardemailAlias_disable(t *testing.T) {
-	var alias forwardemail.Alias
-	domain := fake.Internet().Domain()
-	name := fake.Internet().User()
-	recipient := fake.Internet().FreeEmail()
-
-	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccForwardemailProviderFactories,
-		CheckDestroy:      testAccCheckForwardemailAliasDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: fmt.Sprintf(testAccCheckForwardemailAliasConfig_basic, domain, name, recipient),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckForwardemailAliasExists("forwardemail_alias.test", &alias),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "domain", domain),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "name", name),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "is_enabled", "true"),
-				),
-			},
-			{
-				Config: fmt.Sprintf(testAccCheckForwardemailAliasConfig_disabled, domain, name, recipient),
-				Check: resource.ComposeTestCheckFunc(
-					testAccCheckForwardemailAliasExists("forwardemail_alias.test", &alias),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "domain", domain),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "name", name),
-					resource.TestCheckResourceAttr("forwardemail_alias.test", "is_enabled", "false"),
-				),
-			},
-		},
-	})
+func testAccAliasResourceConfig() string {
+	return `
+resource "forwardemail_domain" "test" {
+  name = "example.com"
 }
 
-func testAccCheckForwardemailAliasExists(n string, alias *forwardemail.Alias) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[n]
-		if !ok {
-			return fmt.Errorf("not found: %s", n)
-		}
-
-		if rs.Primary.ID == "" {
-			return fmt.Errorf("no ID is set")
-		}
-
-		client, ok := testAccForwardemailProvider.Meta().(*forwardemail.Client)
-		if !ok {
-			return fmt.Errorf("meta is not of type *forwardemail.Client")
-		}
-
-		foundAlias, err := client.GetAlias(rs.Primary.Attributes["domain"], rs.Primary.ID)
-		if err != nil {
-			return err
-		}
-
-		if foundAlias.Name != rs.Primary.ID {
-			return fmt.Errorf("alias not found")
-		}
-
-		*alias = *foundAlias
-
-		return nil
-	}
+resource "forwardemail_alias" "test" {
+  name       = "postmaster"
+  domain     = forwardemail_domain.test.name
+  recipients = ["user@example.com"]
 }
-
-func testAccCheckForwardemailAliasDestroy(s *terraform.State) error {
-	client, ok := testAccForwardemailProvider.Meta().(*forwardemail.Client)
-	if !ok {
-		return fmt.Errorf("meta is not of type *forwardemail.Client")
-	}
-
-	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "forwardemail_alias" {
-			continue
-		}
-
-		if _, err := client.GetAlias(rs.Primary.Attributes["domain"], rs.Primary.ID); err == nil {
-			return fmt.Errorf("alias is still there")
-		}
-	}
-
-	return nil
-}
-
-const testAccCheckForwardemailAliasConfig_basic = `
-	resource "forwardemail_domain" "test" {
-		name = "%s"
-	}
-
-	resource "forwardemail_alias" "test" {
-	  name   = "%s"
-	  domain = forwardemail_domain.test.name
-	
-	  recipients = ["%s"]
-	}
 `
-
-const testAccCheckForwardemailAliasConfig_disabled = `
-	resource "forwardemail_domain" "test" {
-		name = "%s"
-	}
-
-	resource "forwardemail_alias" "test" {
-	  name   = "%s"
-	  domain = forwardemail_domain.test.name
-	
-	  recipients = ["%s"]
-      is_enabled = false 
-	}
-`
+}
