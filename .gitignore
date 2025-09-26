@@ -57,3 +57,5 @@ website/node_modules
 *.winfile eol=crlf
 
 terraform-provider-forwardemail
+
+.task
