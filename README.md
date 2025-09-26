@@ -17,6 +17,11 @@ The [Forward Email Provider]([https://registry.terraform.io/providers/](https://
 
 ## Building the Provider
 
+> [!NOTE]
+> The following installation uses [Taskfile](https://taskfile.dev/), which can be downloaded by running the following command:
+>
+> `brew install go-task`
+
 Clone repository:
 
 ```sh
@@ -26,8 +31,8 @@ git clone https://github.com/forwardemail/terraform-provider-forwardemail.git
 Enter the provider directory and build the provider:
 
 ```sh
-cd terraform-provider-forwardemail
-make build
+cd terraform-provider-armis-forwardemail
+task build
 ```
 
 To use a released provider in your Terraform environment, run [`terraform init`](https://www.terraform.io/docs/commands/init.html) and Terraform will automatically install the provider. To specify a particular provider version when installing released providers, see the [Terraform documentation on provider versioning](https://www.terraform.io/docs/configuration/providers.html#version-provider-versions).
@@ -55,23 +60,6 @@ provider "forwardemail" {
 resource "forwardemail_domain" "default" {
   name = "example_domain.com"
 }
-```
-
-## Testing the Provider
-
-In order to test the provider, you can run `go test`.
-
-```sh
-go test -v ./...
-```
-
-In order to run the full suite of Acceptance tests, you'll need a paid Forward Email account.
-
-You'll also need to set the API key environment variable:
-
-```sh
-export FORWARDEMAIL_API_KEY=<API_KEY>
-make testacc
 ```
 
 ## Contributing
