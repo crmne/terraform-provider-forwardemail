@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-// SweepDomains will delete all domains starting with "tf-acc"
+// SweepDomains will delete all domains starting with "tf-acc".
 func SweepDomains(name string) *resource.Sweeper {
 	return &resource.Sweeper{
 		Name: name,

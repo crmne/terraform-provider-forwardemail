@@ -93,7 +93,7 @@ tasks:
   sweep:
     desc: "Run sweeper tests to clean up resources. WARNING: This will destroy resources! Use with caution."
     cmds:
-      - go test ./forwardemail -v -timeout 5m -sweep=lab
+      - go test ./forwardemail -v -timeout 5m -sweep=forwardemail
 
   prep:
     desc: "Prepare the provider"
