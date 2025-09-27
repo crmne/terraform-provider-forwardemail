@@ -1,27 +1,27 @@
 package forwardemail
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-func TestAccDataSourceForwardemailDomain_basic(t *testing.T) {
-	resource.Test(t, resource.TestCase{
+func testAccDataSourceForwardemailAccount(t *testing.T) resource.TestCase {
+	return resource.TestCase{
 		PreCheck:          func() { testAccPreCheck(t) },
-		ProviderFactories: testAccForwardemailProviderFactories,
+		ProviderFactories: testAccProviderFactories(),
 		Steps: []resource.TestStep{
 			{
-				Config: fmt.Sprint(testAccCheckDataSourceForwardemailAccountConfig_basic),
+				Config: testAccAccountDataSourceConfig(),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.forwardemail_account.test", "email"),
 				),
 			},
 		},
-	})
+	}
 }
 
-const testAccCheckDataSourceForwardemailAccountConfig_basic = `
-	data forwardemail_account "test" {}
-`
+func testAccAccountDataSourceConfig() string {
+	return `
+data forwardemail_account "test" {}`
+}
