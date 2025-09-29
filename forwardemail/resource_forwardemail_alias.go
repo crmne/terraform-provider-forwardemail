@@ -218,8 +218,12 @@ func importAliasState(ctx context.Context, d *schema.ResourceData, meta interfac
 	domain := parts[0]
 	name := parts[1]
 
-	d.Set("domain", domain)
-	d.Set("name", name)
+	if err := d.Set("domain", domain); err != nil {
+		return nil, err
+	}
+	if err := d.Set("name", name); err != nil {
+		return nil, err
+	}
 	d.SetId(name)
 
 	// Call read to populate the rest of the fields
