@@ -71,24 +71,47 @@ tasks:
       - go vet ./...
 
   install:
-    desc: "Set up an override allowing a local version of the provider to be used"
+    desc: "Install the provider into the Terraform filesystem mirror"
     cmds:
       - cmd: |-
-          cat <<EOF > "$HOME/.terraformrc"
+          set -euo pipefail
+          VERSION="$(git describe --tags --abbrev=0 | sed 's/^v//')"
+          GOOS="$(go env GOOS)"
+          GOARCH="$(go env GOARCH)"
+          GOBIN="$(go env GOBIN)"
+          if [ -z "$GOBIN" ]; then
+            GOBIN="$(go env GOPATH)/bin"
+          fi
+
+          if [ "${TF_NO_WRITE_RC:-}" != "1" ]; then
+            if [ -f "$HOME/.terraformrc" ]; then
+              cp "$HOME/.terraformrc" "$HOME/.terraformrc.bak"
+            fi
+            cat <<EOF > "$HOME/.terraformrc"
           provider_installation {
-            dev_overrides {
-              "forwardemail/forwardemail" = "$GOPATH/bin"
+            filesystem_mirror {
+              path    = "~/.terraform.d/plugins"
+              include = ["forwardemail/forwardemail"]
             }
             direct {}
           }
           EOF
-        silent: true
-      - go install .
+          fi
+
+          go install .
+
+          PLUGIN_DIR="$HOME/.terraform.d/plugins/registry.terraform.io/forwardemail/forwardemail/${VERSION}/${GOOS}_${GOARCH}"
+          mkdir -p "$PLUGIN_DIR"
+          install -m 0755 "$GOBIN/terraform-provider-forwardemail" "$PLUGIN_DIR/terraform-provider-forwardemail_v${VERSION}"
+
+          if [ -n "${TF_LOCK_DIR:-}" ]; then
+            terraform -chdir="$TF_LOCK_DIR" providers lock -fs-mirror="$HOME/.terraform.d/plugins" -platform="${GOOS}_${GOARCH}" forwardemail/forwardemail
+          fi
 
   uninstall:
-    desc: "Remove any local overrides for local development"
+    desc: "Remove the local filesystem mirror for the provider"
     cmds:
-      - rm -f "$HOME/.terraformrc"
+      - rm -rf "$HOME/.terraform.d/plugins/registry.terraform.io/forwardemail/forwardemail"
 
   sweep:
     desc: "Run sweeper tests to clean up resources. WARNING: This will destroy resources! Use with caution."
@@ -104,4 +127,3 @@ tasks:
       - install
     cmds:
       - go mod tidy
-
