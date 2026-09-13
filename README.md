@@ -64,6 +64,9 @@ resource "forwardemail_domain" "default" {
 
 ## Contributing
 
+Release maintainers: see [PACKAGING.md](PACKAGING.md) for Darwin notarization,
+Terraform/GPG artifact ordering and non-publishing native acceptance runs.
+
 For bug reports & feature requests, please use the [issue tracker](https://github.com/forwardemail/terraform-provider-forwardemail/issues).
 
 PRs are welcome! We follow the typical "fork-and-pull" Git workflow.
@@ -81,4 +84,3 @@ PRs are welcome! We follow the typical "fork-and-pull" Git workflow.
 <a href="https://github.com/forwardemail/terraform-provider-forwardemail/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=forwardemail/terraform-provider-forwardemail&max=24" />
 </a>
-

@@ -28,8 +28,10 @@ builds:
       - goos: darwin
         goarch: '386'
     binary: '{{ .ProjectName }}_v{{ .Version }}'
+    hooks:
+      post: ruby scripts/notarize_darwin.rb "{{ .Os }}" "{{ .Path }}"
 archives:
-  - format: zip
+  - formats: [zip]
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
 checksum:
   extra_files:

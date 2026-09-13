@@ -4,13 +4,16 @@ name: Terraform Provider Release
 on:
   release:
     types: [published]
+  # Signed snapshot acceptance only; this event never publishes a provider.
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    # All existing targets disable CGO and cross-build here unchanged.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
         with:
@@ -20,17 +23,67 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+      - name: Install shared signing tool and test the hook
+        run: |
+          gem install native-packages --version 0.5.1 --no-document
+          gem install minitest --version 6.0.6 --no-document
+          ruby scripts/notarize_darwin_test.rb
       - name: Import GPG key
+        if: github.event_name == 'release'
         uses: crazy-max/ghaction-import-gpg@82a020f1f7f605c65dd2449b392a52c3fcfef7ef # v6.0.0
         id: import_gpg
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASS }}
+      - name: Create an ephemeral GPG key for snapshot acceptance
+        if: github.event_name == 'workflow_dispatch'
+        id: snapshot_gpg
+        env:
+          GNUPGHOME: ${{ runner.temp }}/provider-test-gpg
+        run: |
+          install -d -m 700 "$GNUPGHOME"
+          gpg --batch --pinentry-mode loopback --passphrase '' --quick-generate-key 'Packaging acceptance <packaging@example.invalid>' ed25519 sign 1d
+          fingerprint="$(gpg --batch --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')"
+          test -n "$fingerprint"
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
-          args: release --clean
+          version: v2.18.1
+          # Keep native signing submissions serial as well as the gem's keychain lock.
+          args: release --clean --parallelism 1 ${{ github.event_name == 'workflow_dispatch' && '--snapshot --skip=publish' || '' }}
         env:
           # GitHub sets the GITHUB_TOKEN secret automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          GPG_FINGERPRINT: ${{ steps.snapshot_gpg.outputs.fingerprint || steps.import_gpg.outputs.fingerprint }}
+          REQUIRE_APPLE_NOTARIZATION: '1'
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      - name: Verify final ZIPs, registry manifest and GPG checksum signature
+        if: github.event_name == 'workflow_dispatch'
+        run: ruby scripts/verify_release.rb
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: provider-release-acceptance
+          path: |
+            dist/*.zip
+            dist/*_SHA256SUMS*
+            dist/*_manifest.json
+          if-no-files-found: error
+          retention-days: 3
+      - name: Remove the owned snapshot GPG home
+        if: always() && github.event_name == 'workflow_dispatch'
+        env:
+          GNUPGHOME: ${{ runner.temp }}/provider-test-gpg
+        run: |
+          gpgconf --kill all
+          rm -rf "$GNUPGHOME"
